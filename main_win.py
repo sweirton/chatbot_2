@@ -1,21 +1,35 @@
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QApplication
 from .chat_interface import ChatInterface
+from .history_interface import ChatHistoryWidget
 
 class MainWindow(QMainWindow):
     def __init__(self, profile_name):
         super().__init__()
         self.profile_name = profile_name
-        self.chatInterface = ChatInterface()
+        self.chat_interface = ChatInterface(self.profile_name)
 
         self.setWindowTitle("Chatbot 2")
         self.setGeometry(100, 100, 800, 600)
 
-        # Setting up chat interface as central widget
+        # Create a container widget for the chat interface and history
         chat_box = QWidget()
         self.setCentralWidget(chat_box)
-        layout = QHBoxLayout(chat_box)
-        layout.addWidget(self.chatInterface, 3)
+
+        # Set up a horizontal layout for the container widget
+        layout = QHBoxLayout()
+
+        # Initialize the chat history widget and add it to the layout
+        self.chat_history_widget = ChatHistoryWidget(profile_name=self.profile_name)
+        layout.addWidget(self.chat_history_widget, stretch=3)
         chat_box.setLayout(layout)
+
+        # Chat interface widget
+        layout.addWidget(self.chat_interface, 8)
+
+
+        # Apply the layout to the container widget
+        chat_box.setLayout(layout)
+
         self.centerWindow()
 
     def centerWindow(self):
