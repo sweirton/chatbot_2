@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QMessageBox, QSpacerItem, QSizePolicy, QInputDialog
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QMessageBox, QSpacerItem, QSizePolicy, QInputDialog, QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtCore import Signal
 import os
@@ -9,9 +9,20 @@ class LoginWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Login")
-        self.setGeometry(100, 100, 300, 300)
+        self.setGeometry(100, 100, 300, 400)
         self.profile_name = None
         self.setupUI()
+
+        self.centerWindow()
+
+    def centerWindow(self):
+        # Get the screen object from the application's primary screen
+        screen = QApplication.primaryScreen().geometry()
+        x = int((screen.width() - self.width()) / 2)
+        y = int((screen.height() - self.height()) / 2 - 100)
+
+        # Move the window to the calculated center position
+        self.move(x, y)
 
     def setupUI(self):
         layout = QVBoxLayout(self)
