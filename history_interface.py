@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QPushButton
 from PySide6.QtCore import Signal
+from datetime import datetime
 import os
 
 class ChatHistoryWidget(QWidget):
@@ -26,6 +27,11 @@ class ChatHistoryWidget(QWidget):
          # Select a history item in the list
         self.chat_history_list.setSelectionMode(QListWidget.SingleSelection)
 
+        # Create New Session button
+        self.create_session_btn = QPushButton("Create New Session")
+        self.create_session_btn.clicked.connect(self.createNewSession)
+        layout.addWidget(self.create_session_btn)
+
         # Connect the itemSelectionChanged signal to a slot
         self.chat_history_list.itemSelectionChanged.connect(self.onSelectionChanged)
 
@@ -50,3 +56,19 @@ class ChatHistoryWidget(QWidget):
             selected_file_path = os.path.join(self.history_dir, selected_filename)
             # Emit the full path
             self.sessionSelected.emit(selected_file_path)
+
+    def createNewSession(self):
+        new_session_name = self.genSessionName()
+        new_session_file_path = os.path.join(self.history_dir, f'{new_session_name}.json')
+
+        # Create an empty JSON file for the new session
+        with open(new_session_file_path, 'w') as file:
+            file.write("[]")
+
+        # Update the list of sessions displayed in the widget
+        self.populateWithFilenames()
+
+    def genSessionName(self):
+        now = datetime.now()
+        timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+        return f"{self.profile_name}_Session_{timestamp}"
