@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QMenu
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QMenu, QInputDialog
 from PySide6.QtCore import Signal
 from datetime import datetime
 import os
@@ -45,13 +45,14 @@ class ChatHistoryWidget(QWidget):
         # Clear existing items in the list widget before adding new ones
         self.chat_history_list.clear()
 
-        # Add each JSON filename to the chat history list widget
+        # Add each JSON filename to the chat history list widget, without the '.json' extension
         for filename in json_files:
-            self.chat_history_list.addItem(filename)
+            display_name = os.path.splitext(filename)[0]  # Remove the '.json' extension
+            self.chat_history_list.addItem(display_name)
 
     def onSelectionChanged(self):
         if selected_items := self.chat_history_list.selectedItems():
-            selected_filename = selected_items[0].text()
+            selected_filename = f'{selected_items[0].text()}.json'
             # Construct the full path for the selected session
             selected_file_path = os.path.join(self.history_dir, selected_filename)
             # Emit the full path
@@ -76,16 +77,18 @@ class ChatHistoryWidget(QWidget):
     def contextMenuEvent(self, event):
         context_menu = QMenu(self)
 
-        # Add a Delete action
         delete_action = context_menu.addAction("Delete Session")
+        rename_action = context_menu.addAction("Rename Session")
         action = context_menu.exec(self.mapToGlobal(event.pos()))
 
         if action == delete_action:
             self.deleteSelectedSession()
+        elif action == rename_action:
+            self.renameSelectedSession()
 
     def deleteSelectedSession(self):
         if selected_items := self.chat_history_list.selectedItems():
-            selected_filename = selected_items[0].text()
+            selected_filename = f'{selected_items[0].text()}.json'
             selected_file_path = os.path.join(self.history_dir, selected_filename)
 
             # Confirm deletion with the user (optional)
@@ -99,3 +102,31 @@ class ChatHistoryWidget(QWidget):
 
                 # Optionally, refresh the list to reflect the deletion
                 self.populateWithFilenames()
+
+    def renameSelectedSession(self):
+        if not (selected_items := self.chat_history_list.selectedItems()):
+            return
+        selected_filename = f'{selected_items[0].text()}.json'
+        selected_file_path = os.path.join(self.history_dir, selected_filename)
+
+        # Prompt the user for a new name (without the .json extension)
+        current_name_without_extension = os.path.splitext(selected_filename)[0]
+        new_name, ok = QInputDialog.getText(self, "Rename Session", "Enter new name:", text=current_name_without_extension)
+
+        if ok and new_name:
+            # Ensure the new name has the .json extension
+            if not new_name.endswith('.json'):
+                new_name += '.json'
+
+            new_file_path = os.path.join(self.history_dir, new_name)
+
+            # Check if a file with the new name already exists
+            if os.path.exists(new_file_path):
+                QMessageBox.warning(self, "Rename Failed", f"A session with the name '{new_name}' already exists.")
+                return
+
+            # Rename the file
+            os.rename(selected_file_path, new_file_path)
+
+            # Refresh the list to reflect the name change
+            self.populateWithFilenames()
