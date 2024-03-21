@@ -55,7 +55,7 @@ class ChatInterface(QWidget):
         os.makedirs(self.history_dir, exist_ok=True)
 
         # Load or create a session file automatically after all setup is complete
-        self.session_file = self.loadSessionFile()
+        self.session_file = self.autoLoadSession()
 
     def loadAPIKey(self):
         self.token_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'profiles', self.profile_name, 'tokens')
@@ -74,10 +74,10 @@ class ChatInterface(QWidget):
             self.user_input.clear()
             self.conversation_history.append({"role": "user", "content": user_message})
             self.worker = ChatWorker(self.api_url, self.headers, self.conversation_history)
-            self.worker.finished.connect(self.displayResponse)
+            self.worker.finished.connect(self.realtimeResponse)
             self.worker.start()
 
-    def displayResponse(self, response):
+    def realtimeResponse(self, response):
         # Directly call displayMessage for the assistant's response
         self.displayMessage("assistant", response)
 
@@ -95,7 +95,7 @@ class ChatInterface(QWidget):
         # Append the stylized HTML message to the chat_message_box
         self.chat_message_box.append(message_html)
 
-    def loadSessionFile(self):
+    def autoLoadSession(self):
         if session_files := glob.glob(os.path.join(self.history_dir, '*.json')):
             # Sort the files by their modification time, newest first
             session_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
@@ -109,13 +109,13 @@ class ChatInterface(QWidget):
 
             # Create an empty JSON file for the new session
             with open(new_session_file_path, 'w') as f:
-                f.write("{}")
+                f.write("[]")
 
             print(f"New session file created: {new_session_file_path}")
             return new_session_file_path
 
     def genSessionName(self):
-        # Your existing method to generate a session name
+        # Generate a session name using data-time
         now = datetime.now()
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
         return f"{self.profile_name}_Session_{timestamp}"
@@ -124,10 +124,41 @@ class ChatInterface(QWidget):
         # Define the file path for storing this session's chat history
         chat_file_path = os.path.join(self.history_dir, self.session_file)
 
-        # Write the conversation history to the file
-        with open(chat_file_path, 'a', encoding='utf-8') as file:
-            json.dump(self.conversation_history, file, ensure_ascii=False, indent=4)
-        
+        try:
+            # Read the existing session content
+            with open(chat_file_path, 'r', encoding='utf-8') as file:
+                session_messages = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Start with an empty list if the file doesn't exist or is empty
+            session_messages = []
+
+        # Update the session content with new conversation history
+        session_messages.extend(self.conversation_history)
+
+        # Write the updated session back to the file
+        with open(chat_file_path, 'w', encoding='utf-8') as file:
+            json.dump(session_messages, file, ensure_ascii=False, indent=4)
+
+        # Clear the local conversation history after it's been saved
+        self.conversation_history.clear()
+
+    def loadChatSession(self, session_file_path):
+        # Open and read the session file
+        with open(session_file_path, 'r', encoding='utf-8') as file:
+            # Read the session data as a string
+            session_data = json.load(file)
+
+        # Clear the chat window before loading the new session
+        self.chat_message_box.clear()
+
+        # Iterate through each message in the session
+        for message in session_data:
+            role = message.get("role")
+            content = message.get("content")
+            if role and content:
+                # Use the displayMessage method to format and append each message
+                self.displayMessage(role, content)
+
 class ChatWorker(QThread):
     finished = Signal(str)
 
