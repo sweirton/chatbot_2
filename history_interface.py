@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QPushButton, QMessageBox, QMenu
 from PySide6.QtCore import Signal
 from datetime import datetime
 import os
@@ -72,3 +72,30 @@ class ChatHistoryWidget(QWidget):
         now = datetime.now()
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
         return f"{self.profile_name}_Session_{timestamp}"
+    
+    def contextMenuEvent(self, event):
+        context_menu = QMenu(self)
+
+        # Add a Delete action
+        delete_action = context_menu.addAction("Delete Session")
+        action = context_menu.exec(self.mapToGlobal(event.pos()))
+
+        if action == delete_action:
+            self.deleteSelectedSession()
+
+    def deleteSelectedSession(self):
+        if selected_items := self.chat_history_list.selectedItems():
+            selected_filename = selected_items[0].text()
+            selected_file_path = os.path.join(self.history_dir, selected_filename)
+
+            # Confirm deletion with the user (optional)
+            reply = QMessageBox.question(self, 'Delete Session',
+                                         f"Are you sure you want to delete the session '{selected_filename}'?",
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+            if reply == QMessageBox.Yes:
+                # Delete the file
+                os.remove(selected_file_path)
+
+                # Optionally, refresh the list to reflect the deletion
+                self.populateWithFilenames()
