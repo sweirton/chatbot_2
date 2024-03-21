@@ -26,11 +26,14 @@ class MainWindow(QMainWindow):
         # Chat interface widget
         layout.addWidget(self.chat_interface, 8)
 
-
         # Apply the layout to the container widget
         chat_box.setLayout(layout)
 
+        # Center the app on screen
         self.centerWindow()
+
+        # Signal from history widget selection
+        self.chat_history_widget.sessionSelected.connect(self.chat_interface.loadChatSession)
 
     def centerWindow(self):
         # Positions window based off of current screen dimensions
