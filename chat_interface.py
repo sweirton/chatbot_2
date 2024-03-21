@@ -5,7 +5,6 @@ from datetime import datetime
 import json
 import requests
 import os
-import glob
 
 
 class ChatInterface(QWidget):
@@ -54,8 +53,8 @@ class ChatInterface(QWidget):
         # Ensure the history directory exist
         os.makedirs(self.history_dir, exist_ok=True)
 
-        # Load or create a session file automatically after all setup is complete
-        self.session_file = self.autoLoadSession()
+        # Used for writing to the current session file
+        self.current_session_file_path = None
 
     def loadAPIKey(self):
         self.token_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'profiles', self.profile_name, 'tokens')
@@ -95,34 +94,15 @@ class ChatInterface(QWidget):
         # Append the stylized HTML message to the chat_message_box
         self.chat_message_box.append(message_html)
 
-    def autoLoadSession(self):
-        if session_files := glob.glob(os.path.join(self.history_dir, '*.json')):
-            # Sort the files by their modification time, newest first
-            session_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-            latest_session_file = session_files[0]
-            print(f"Latest session found: {latest_session_file}")
-            return latest_session_file
-        else:
-            # No session files found, create a new one
-            new_session_name = self.genSessionName()
-            new_session_file_path = os.path.join(self.history_dir, f'{new_session_name}.json')
-
-            # Create an empty JSON file for the new session
-            with open(new_session_file_path, 'w') as f:
-                f.write("[]")
-
-            print(f"New session file created: {new_session_file_path}")
-            return new_session_file_path
-
     def genSessionName(self):
         # Generate a session name using data-time
         now = datetime.now()
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
         return f"{self.profile_name}_Session_{timestamp}"
 
-    def writeToStorage(self):
-        # Define the file path for storing this session's chat history
-        chat_file_path = os.path.join(self.history_dir, self.session_file)
+    def writeToStorage(self, session_file_path=None):
+        # Use the provided session_file_path or fall back to the current session file path
+        chat_file_path = session_file_path or self.current_session_file_path
 
         try:
             # Read the existing session content
@@ -143,6 +123,8 @@ class ChatInterface(QWidget):
         self.conversation_history.clear()
 
     def loadChatSession(self, session_file_path):
+        self.current_session_file_path = session_file_path  # Store the current session file path
+        
         # Open and read the session file
         with open(session_file_path, 'r', encoding='utf-8') as file:
             # Read the session data as a string
