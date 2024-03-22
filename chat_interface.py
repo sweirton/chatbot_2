@@ -71,8 +71,8 @@ class ChatInterface(QWidget):
         if user_message := self.user_input.text().strip():
             self.displayMessage("user", user_message)
             self.user_input.clear()
-            self.conversation_history.append({"role": "user", "content": user_message})
-            self.worker = ChatWorker(self.api_url, self.headers, self.conversation_history)
+            current_session_data = self.readCurrentSessionData()
+            self.worker = ChatWorker(self.api_url, self.headers, current_session_data, {"role": "user", "content": user_message})
             self.worker.finished.connect(self.realtimeResponse)
             self.worker.start()
 
@@ -141,19 +141,28 @@ class ChatInterface(QWidget):
                 # Use the displayMessage method to format and append each message
                 self.displayMessage(role, content)
 
+    def readCurrentSessionData(self):
+        # This is used to append past conversation history to current chat for LLM's conversational context
+        try:
+            with open(self.current_session_file_path, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except Exception as e:
+            print(f"Error reading session data: {e}")
+            return []
+
 class ChatWorker(QThread):
     finished = Signal(str)
 
-    def __init__(self, api_url, headers, conversation_history):
+    def __init__(self, api_url, headers, session_messages, new_message):
         super().__init__()
         self.api_url = api_url
         self.headers = headers
-        self.conversation_history = conversation_history
+        self.session_messages = session_messages + [new_message]
 
     def run(self):
         payload = {
             "model": "gpt-3.5-turbo",
-            "messages": self.conversation_history,
+            "messages": self.session_messages,
             "max_tokens": 1000,
             "temperature": 0.7
         }
@@ -167,4 +176,3 @@ class ChatWorker(QThread):
             self.finished.emit(bot_response)
         except Exception as e:
             self.finished.emit(f"Error processing the API response: {e}")
-
