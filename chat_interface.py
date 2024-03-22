@@ -71,6 +71,8 @@ class ChatInterface(QWidget):
         if user_message := self.user_input.text().strip():
             self.displayMessage("user", user_message)
             self.user_input.clear()
+            self.conversation_history.append({"role": "user", "content": user_message})
+            self.writeToStorage()  # Write the conversation history including the user's message to storage
             current_session_data = self.readCurrentSessionData()
             self.worker = ChatWorker(self.api_url, self.headers, current_session_data, {"role": "user", "content": user_message})
             self.worker.finished.connect(self.realtimeResponse)
@@ -100,23 +102,24 @@ class ChatInterface(QWidget):
         timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
         return f"{self.profile_name}_Session_{timestamp}"
 
-    def writeToStorage(self, session_file_path=None):
-        # Use the provided session_file_path or fall back to the current session file path
-        chat_file_path = session_file_path or self.current_session_file_path
+    def writeToStorage(self):
+        # Initialize session file path if not set
+        if not self.current_session_file_path:
+            self.current_session_file_path = os.path.join(
+                self.history_dir, f"{self.genSessionName()}.json"
+            )
 
+        # Combine existing and new conversation history
         try:
-            # Read the existing session content
-            with open(chat_file_path, 'r', encoding='utf-8') as file:
+            with open(self.current_session_file_path, 'r', encoding='utf-8') as file:
                 session_messages = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
-            # Start with an empty list if the file doesn't exist or is empty
             session_messages = []
 
-        # Update the session content with new conversation history
         session_messages.extend(self.conversation_history)
 
-        # Write the updated session back to the file
-        with open(chat_file_path, 'w', encoding='utf-8') as file:
+        # Write combined history to the session file
+        with open(self.current_session_file_path, 'w', encoding='utf-8') as file:
             json.dump(session_messages, file, ensure_ascii=False, indent=4)
 
         # Clear the local conversation history after it's been saved
