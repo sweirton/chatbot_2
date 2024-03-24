@@ -17,10 +17,15 @@ class ProfileManager:
         # Create directories if they don't exist
         os.makedirs(user_data_dir, exist_ok=True)
 
+        # Create tokens directory
+        user_tokens_dir = os.path.join(profile_dir, 'tokens')
+        os.makedirs(user_tokens_dir, exist_ok=True)
+
         # Prompt for API Key
         api_key, ok = QInputDialog.getText(self.parent, 'API Key', 'Enter your API Key:')
+        self.token_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'profiles', profile_name, 'tokens')
         if ok and api_key:
-            env_path = os.path.join(profile_dir, 'api_info.env')
+            env_path = os.path.join(self.token_dir, 'api_info.env')
             with open(env_path, 'w') as file:
                 file.write(f'API_KEY="{api_key}"\n')
             QMessageBox.information(self.parent, 'Profile Created', f'Profile "{profile_name}" created successfully.\nAPI Key stored in {env_path}')
