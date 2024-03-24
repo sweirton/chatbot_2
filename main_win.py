@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QApplication
 from .chat_interface import ChatInterface
 from .history_interface import ChatHistoryWidget
+from .options_menu import OptionsMenu
+from menu_bar_options.options.profile_config import ProfileConfig
 
 class MainWindow(QMainWindow):
     def __init__(self, profile_name):
@@ -32,12 +34,27 @@ class MainWindow(QMainWindow):
         # Center the app on screen
         self.centerWindow()
 
+        # Initialize menu bar
+        self.initializeMenuBar()
+
         # Signal from history widget selection
         self.chat_history_widget.sessionSelected.connect(self.chat_interface.loadChatSession)
 
+        # Connect the profileConfigWindowSignal signal to the openProfileConfig slot
+        self.optionsMenu.profileConfigWindowSignal.connect(self.openProfileConfig)
+        
     def centerWindow(self):
         # Positions window based off of current screen dimensions
         screen = QApplication.primaryScreen().geometry()
         x = int((screen.width() - self.width()) / 2)
         y = int((screen.height() - self.height()) / 2 - 100)
         self.move(x, y)
+
+    def initializeMenuBar(self):
+        # Initialize and set up the menu bar
+        self.optionsMenu = OptionsMenu(self)
+        self.setMenuBar(self.optionsMenu.menubar)
+
+    def openProfileConfig(self):
+        self.profileConfigWindow = ProfileConfig(parent=self, current_profile=self.profile_name)
+        self.profileConfigWindow.show()
