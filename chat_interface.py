@@ -153,6 +153,9 @@ class ChatInterface(QWidget):
             print(f"Error reading session data: {e}")
             return []
 
+    def setFocusToUserInput(self):
+        self.user_input.setFocus()
+
 class ChatWorker(QThread):
     finished = Signal(str)
 
