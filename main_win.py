@@ -43,6 +43,11 @@ class MainWindow(QMainWindow):
         # Connect the profileConfigWindowSignal signal to the openProfileConfig slot
         self.optionsMenu.profileConfigWindowSignal.connect(self.openProfileConfig)
         
+        self.optionsMenu.loadProfileSignal.connect(self.onProfileLoaded)
+        self.optionsMenu.createProfileSignal.connect(self.onProfileCreate)
+
+        self.chat_history_widget.sessionCreated.connect(self.onSessionCreated)
+
     def centerWindow(self):
         # Positions window based off of current screen dimensions
         screen = QApplication.primaryScreen().geometry()
@@ -58,3 +63,21 @@ class MainWindow(QMainWindow):
     def openProfileConfig(self):
         self.profileConfigWindow = ProfileConfig(parent=self, current_profile=self.profile_name)
         self.profileConfigWindow.show()
+
+    def onProfileLoaded(self, profile_name):
+        # Update the interface to reflect name change
+        self.nameChange(profile_name)
+        self.chat_history_widget.selectRecentSession()
+
+    def onProfileCreate(self, profile_name):
+        # Update the interface to reflect name change
+        self.nameChange(profile_name)
+
+    def nameChange(self, profile_name):
+        self.profile_name = profile_name
+        self.chat_history_widget.updateProfileName(profile_name)
+        self.chat_interface = ChatInterface(profile_name)
+    
+    def onSessionCreated(self):
+        # Set the user input focus when creating a new session
+        self.chat_interface.setFocusToUserInput()
