@@ -5,6 +5,7 @@ import os
 
 class ChatHistoryWidget(QWidget):
     sessionSelected = Signal(str)
+    sessionCreated = Signal()
 
     def __init__(self, parent=None, profile_name=''):
         super().__init__(parent)
@@ -39,6 +40,11 @@ class ChatHistoryWidget(QWidget):
         # List all files in the specified directory
         session_files = os.listdir(self.history_dir)
 
+        # If there are no session files, create a new session
+        if not session_files:
+            self.createAndSelectNewSession()
+            return
+        
         # Filter to keep only .json files
         json_files = [file for file in session_files if file.endswith('.json')]
 
@@ -49,6 +55,12 @@ class ChatHistoryWidget(QWidget):
         for filename in json_files:
             display_name = os.path.splitext(filename)[0]  # Remove the '.json' extension
             self.chat_history_list.addItem(display_name)
+
+        # Select the latest session if there are sessions available
+        if json_files:
+            latest_session = max(json_files)
+            latest_session_path = os.path.join(self.history_dir, latest_session)
+            self.sessionSelected.emit(latest_session_path)
 
     def onSelectionChanged(self):
         if selected_items := self.chat_history_list.selectedItems():
@@ -68,6 +80,17 @@ class ChatHistoryWidget(QWidget):
 
         # Update the list of sessions displayed in the widget
         self.populateWithFilenames()
+
+        # Find the index of the newly created session in the list of sessions
+        session_files = os.listdir(self.history_dir)
+        json_files = [file for file in session_files if file.endswith('.json')]
+        new_session_index = json_files.index(f'{new_session_name}.json')
+
+        # Select the newly created session in the widget
+        self.chat_history_list.setCurrentRow(new_session_index)
+
+        # Emit the signal to indicate that a new session has been created
+        self.sessionCreated.emit()
 
     def genSessionName(self):
         now = datetime.now()
@@ -130,3 +153,24 @@ class ChatHistoryWidget(QWidget):
 
             # Refresh the list to reflect the name change
             self.populateWithFilenames()
+
+    def updateProfileName(self, profile_name):
+        self.profile_name = profile_name
+        self.update_history_dir()
+        self.populateWithFilenames()
+
+    def update_history_dir(self):
+        self.history_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'profiles', self.profile_name, 'chat_history')
+        os.makedirs(self.history_dir, exist_ok=True)
+
+    def selectRecentSession(self):
+        # Get the number of items in the list
+        count = self.chat_history_list.count()
+        if count > 0:
+            # Select the last item (most recent session)
+            self.chat_history_list.setCurrentRow(count - 1)
+
+    def createAndSelectNewSession(self):
+        self.createNewSession()
+        if self.chat_history_list.count() > 0:
+            self.chat_history_list.setCurrentRow(self.chat_history_list.count() - 1)
