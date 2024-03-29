@@ -4,8 +4,14 @@ import fitz  # PyMuPDF
 import pytesseract
 from PIL import Image
 import os
+import json
+import shutil
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+from main_win.chat_interface import ChatInterface
+
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 
 class ProfileConfig(QDialog):
     def __init__(self, parent=None, current_profile=None):
@@ -15,6 +21,9 @@ class ProfileConfig(QDialog):
         self.setGeometry(600, 300, 400, 300)
         self.setupUI()
         self.loadDocuments()
+        self.chat_interface = ChatInterface(current_profile)
+        api_key = self.chat_interface.loadAPIKey()
+        os.environ["OPENAI_API_KEY"] = api_key
 
     def setupUI(self):
         layout = QVBoxLayout(self)
@@ -52,6 +61,44 @@ class ProfileConfig(QDialog):
 
     def onUploadFinished(self, dest_file_path):
         QMessageBox.information(self, "Upload Finished", f"Document processed and saved to {dest_file_path}")
+
+        document_label, _ = os.path.splitext(os.path.basename(dest_file_path))
+        directory_path = os.path.dirname(dest_file_path)
+        subfolder_path = os.path.join(directory_path, "temp_processing")
+
+        # Ensure the subfolder exists
+        os.makedirs(subfolder_path, exist_ok=True)
+
+        # Move the file to the subfolder
+        temp_file_path = shutil.move(dest_file_path, subfolder_path)
+
+        # Process the file in the subfolder
+        file_for_query = SimpleDirectoryReader(input_dir=subfolder_path).load_data()
+        vector_query_engine = VectorStoreIndex.from_documents(file_for_query, use_async=True).as_query_engine()
+        response = vector_query_engine.query("Please provide a brief description of this document in 200 words or less.")
+
+        # Construct the description data
+        description_data = {document_label: str(response)}
+
+        # Path for the descriptions.json file in the original directory
+        json_file_path = os.path.join(directory_path, 'descriptions.json')
+
+        # Check if the JSON file exists and update it
+        if os.path.exists(json_file_path):
+            with open(json_file_path, 'r') as file:
+                data = json.load(file)
+                data.update(description_data)
+        else:
+            data = description_data
+
+        # Write the updated data back to the JSON file
+        with open(json_file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+
+        # Move the file back to its original location
+        shutil.move(temp_file_path, dest_file_path)
+
+        # Load or refresh documents as needed
         self.loadDocuments()
 
     def loadDocuments(self):
