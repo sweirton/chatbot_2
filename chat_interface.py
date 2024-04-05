@@ -59,6 +59,8 @@ class ChatInterface(QWidget):
 
         self.query_handler = self.createQueryHandler()
 
+        self.messages_html = []  # Initialize a list to keep track of message HTML segments
+
     def createQueryHandler(self):
         # Configure the directory path for selected files
         selected_files_directory = os.path.join(
@@ -128,6 +130,9 @@ class ChatInterface(QWidget):
             # Persist the updated conversation history
             self.writeToStorage()
 
+            # Display the "Thinking..." message
+            self.displayMessage("assistant", "Thinking...", replace_last=False)
+            
             # Initialize a background worker for processing the message
             self.worker = ChatWorker(self.query_handler, self.conversation_history, {"role": "user", "content": user_message})
 
@@ -137,10 +142,10 @@ class ChatInterface(QWidget):
             # Start the background worker
             self.worker.start()
 
-
     def realtimeResponse(self, response):
         # Display the assistant's response in the chat interface
-        self.displayMessage("assistant", response)
+        # Replace the "Thinking..." message with the actual response
+        self.displayMessage("assistant", response, replace_last=True)
 
         # Update the conversation history with the assistant's response
         self.conversation_history.append({"role": "assistant", "content": response})
@@ -148,7 +153,7 @@ class ChatInterface(QWidget):
         # Persist the updated conversation history
         self.writeToStorage()
 
-    def displayMessage(self, role, message):
+    def displayMessage(self, role, message, replace_last=False):
         # Define message styling based on the sender's role
         if role == "user":
             color = "blue"
@@ -166,8 +171,18 @@ class ChatInterface(QWidget):
             <b>{sender}</b><br>{message}
         </div><br>'''
 
-        # Append the formatted message to the chat message box
-        self.chat_message_box.append(message_html)
+        if replace_last and self.messages_html:
+            # Replace the last message HTML with the new one
+            self.messages_html[-1] = message_html
+        else:
+            # Append the new message HTML to the list
+            self.messages_html.append(message_html)
+
+        # Join all message HTML segments and set it as the content of the chat_message_box
+        self.chat_message_box.setHtml(''.join(self.messages_html))
+
+        # Scroll to the bottom of the chat_message_box to ensure the latest message is visible
+        self.chat_message_box.verticalScrollBar().setValue(self.chat_message_box.verticalScrollBar().maximum())
 
     def genSessionName(self):
         # Get the current datetime
@@ -229,6 +244,9 @@ class ChatInterface(QWidget):
             if role and content:
                 self.displayMessage(role, content)
 
+        # After loading and displaying the session messages:
+        self.chat_message_box.verticalScrollBar().setValue(self.chat_message_box.verticalScrollBar().maximum())
+
     def readCurrentSessionData(self):
         # Ensure there is a session file path set
         if not self.current_session_file_path:
@@ -271,7 +289,7 @@ class ChatWorker(QThread):
             query = self.new_message.get('content', '').strip()
 
             # Pass the query and session messages to the query handler for processing
-            response_data = self.query_handler.handleQuery(query, self.session_messages)
+            response_data = self.query_handler.handleQuery(query=query, session_messages=self.session_messages)
 
             # Check if the response contains valid data
             if 'choices' not in response_data or not response_data['choices']:
@@ -330,14 +348,16 @@ class QueryHandler:
             print(f"Directory {self.selected_files_directory} does not exist.")
             return False
         
-        # Check if there are any files in the directory
-        # The generator expression checks each item in the directory to see if it's a file
-        # The any() function returns True if any item in the generator is True, indicating the presence of at least one file
-        return any(
-            os.path.isfile(os.path.join(self.selected_files_directory, f))
-            for f in os.listdir(self.selected_files_directory)
-        )
-
+        # Check for the presence of relevant files (ignoring JSON files and subdirectories)
+        for filename in os.listdir(self.selected_files_directory):
+            file_path = os.path.join(self.selected_files_directory, filename)
+            
+            # Check if the file is not a directory and does not have a JSON extension
+            if os.path.isfile(file_path) and not filename.endswith('.json'):
+                return True  # A relevant file is found, no need to check further
+    
+        return False  # No relevant files were found
+    
     def processQueryWithLlamaIndex(self, query):
         # Path to the JSON file containing metadata about the selected files
         selected_files_metadata_path = os.path.join(self.selected_files_directory, 'selected_descriptions.json')
