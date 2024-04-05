@@ -133,8 +133,14 @@ class ChatInterface(QWidget):
             # Display the "Thinking..." message
             self.displayMessage("assistant", "Thinking...", replace_last=False)
             
+            # Read the full conversation history from storage
+            full_conversation_history = self.readCurrentSessionData()
+
+            # Append the latest user message to the full conversation history
+            full_conversation_history.append({"role": "user", "content": user_message})
+
             # Initialize a background worker for processing the message
-            self.worker = ChatWorker(self.query_handler, self.conversation_history, {"role": "user", "content": user_message})
+            self.worker = ChatWorker(query_handler=self.query_handler, session_messages=full_conversation_history, new_message={"role": "user", "content": user_message})
 
             # Connect the worker's completion signal to the method for handling responses
             self.worker.finished.connect(self.realtimeResponse)
@@ -233,7 +239,8 @@ class ChatInterface(QWidget):
 
         # Clear the chat interface to prepare for loading the session messages
         self.chat_message_box.clear()
-
+        self.conversation_history.clear() 
+        
         # Iterate over each message in the loaded session data
         for message in session_data:
             # Extract the role and content for each message
@@ -243,6 +250,7 @@ class ChatInterface(QWidget):
             # Display the message in the chat interface if both role and content are available
             if role and content:
                 self.displayMessage(role, content)
+                self.conversation_history.append(message)  # Append the loaded message to the conversation history
 
         # After loading and displaying the session messages:
         self.chat_message_box.verticalScrollBar().setValue(self.chat_message_box.verticalScrollBar().maximum())
