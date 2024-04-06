@@ -15,5 +15,4 @@ Future goals ->
 -- Model training feature
   > Want to give the user an intuitive and user-friendly way to train their own models
 - Website monitoring feature
-- - This feature may be off-limits to the masses, but I want to include the ability to
-  - monitor websites for updates
+  > This feature may be off-limits to the masses, but I want to include the ability to monitor websites for updates
