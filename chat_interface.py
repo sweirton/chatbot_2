@@ -132,22 +132,25 @@ class ChatInterface(QWidget):
 
             # Display the "Thinking..." message
             self.displayMessage("assistant", "Thinking...", replace_last=False)
+
+            # Scroll to the bottom of the chat_message_box to ensure the latest message is visible
+            self.chat_message_box.verticalScrollBar().setValue(self.chat_message_box.verticalScrollBar().maximum())
             
             # Read the full conversation history from storage
-            full_conversation_history = self.readCurrentSessionData()
+            self.full_conversation_history = self.readCurrentSessionData()
 
             # Append the latest user message to the full conversation history
-            full_conversation_history.append({"role": "user", "content": user_message})
+            self.full_conversation_history.append({"role": "user", "content": user_message})
 
             # Initialize a background worker for processing the message
-            self.worker = ChatWorker(query_handler=self.query_handler, session_messages=full_conversation_history, new_message={"role": "user", "content": user_message})
+            self.worker = ChatWorker(query_handler=self.query_handler, session_messages=self.full_conversation_history, new_message={"role": "user", "content": user_message})
 
             # Connect the worker's completion signal to the method for handling responses
             self.worker.finished.connect(self.realtimeResponse)
 
             # Start the background worker
             self.worker.start()
-
+    
     def realtimeResponse(self, response):
         # Display the assistant's response in the chat interface
         # Replace the "Thinking..." message with the actual response
@@ -159,6 +162,9 @@ class ChatInterface(QWidget):
         # Persist the updated conversation history
         self.writeToStorage()
 
+        # Scroll to the bottom of the chat_message_box to ensure the latest message is visible
+        self.chat_message_box.verticalScrollBar().setValue(self.chat_message_box.verticalScrollBar().maximum())
+
     def displayMessage(self, role, message, replace_last=False):
         # Define message styling based on the sender's role
         if role == "user":
@@ -168,7 +174,7 @@ class ChatInterface(QWidget):
             color = "green"
             sender = "Digital Assistant"
         else:
-            color = "gray"  # Default color for undefined roles
+            color = "grey"  # Default color for undefined roles
             sender = "Unknown"
 
         # Construct the HTML for the message
@@ -240,6 +246,7 @@ class ChatInterface(QWidget):
         # Clear the chat interface to prepare for loading the session messages
         self.chat_message_box.clear()
         self.conversation_history.clear() 
+        self.messages_html.clear()
         
         # Iterate over each message in the loaded session data
         for message in session_data:
