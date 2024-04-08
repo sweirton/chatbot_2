@@ -1,4 +1,5 @@
 # Standard library imports
+from util.session_utils import customTextToHtml
 from datetime import datetime
 import json
 import os
@@ -179,9 +180,10 @@ class ChatInterface(QWidget):
 
         # Construct the HTML for the message
         message_html = f'''
-        <div style="font-size: 16px; color: {color}; margin: 2px; padding: 10px;">
-            <b>{sender}</b><br>{message}
-        </div><br>'''
+            <div style="margin: 2px; padding: 10px;">
+                <span style="font-size: 14px; color: {color};"><b>{customTextToHtml(sender)}</b></span>
+                <span style="color: grey;">{customTextToHtml(message)}</span>
+            </div><br>'''
 
         if replace_last and self.messages_html:
             # Replace the last message HTML with the new one
